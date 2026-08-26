@@ -187,6 +187,7 @@ export default function WaterRippleImage({
   const texRef = useRef<WebGLTexture | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const vidRef = useRef<HTMLVideoElement | null>(null);
+  const lastVideoTimeRef = useRef<number>(-1);
   const animRef = useRef<number | null>(null);
   const mouseRef = useRef({ x: 0.5, y: 0.5 });
 
@@ -378,11 +379,14 @@ export default function WaterRippleImage({
         gl.uniform2f(u['u_mouse'], mouseRef.current.x, mouseRef.current.y);
       }
       
-      // Update texture with new video frame
+      // Update texture with new video frame ONLY if time progressed
       if (vidRef.current && vidRef.current.readyState >= 2 && texRef.current) {
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, texRef.current);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, vidRef.current);
+        if (vidRef.current.currentTime !== lastVideoTimeRef.current) {
+          lastVideoTimeRef.current = vidRef.current.currentTime;
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, texRef.current);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, vidRef.current);
+        }
       }
 
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

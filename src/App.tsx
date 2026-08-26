@@ -1,10 +1,10 @@
-import { Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { RootLayout } from './components/layout/RootLayout';
 import { ScrollToTop } from './components/navigation/ScrollToTop';
-import { Skeleton } from './components/ui/Skeleton';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { ToastContainer } from './components/ui/Toast';
+
+import { lazy } from 'react';
 
 const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
 const Explorer = lazy(() => import('./pages/Explorer').then(m => ({ default: m.Explorer })));
@@ -15,7 +15,6 @@ function App() {
     <ErrorBoundary fallbackMessage="Application critical failure. Please reload the subsystem.">
       <ScrollToTop />
       <ToastContainer />
-      <Suspense fallback={<Skeleton />}>
         <Routes>
           <Route path="/" element={<RootLayout />}>
             <Route index element={<Home />} />
@@ -23,7 +22,6 @@ function App() {
             <Route path="analysis" element={<Analysis />} />
           </Route>
         </Routes>
-      </Suspense>
     </ErrorBoundary>
   );
 }

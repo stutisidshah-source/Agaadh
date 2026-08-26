@@ -31,6 +31,10 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
   body {
     @apply text-foam-white font-sans antialiased overflow-x-hidden;
     /* Hide default scrollbar for cleaner look, but keep functionality */

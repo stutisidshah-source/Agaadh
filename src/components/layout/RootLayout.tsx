@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import { Outlet, useLocation, NavLink } from 'react-router-dom';
-import { useDepthStore } from '../../store/useDepthStore';
+import { Skeleton } from '../ui/Skeleton';
 import { WaterRippleImage } from '../ui/water-ripple-image';
 
 export const RootLayout = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { depth01, setDepth } = useDepthStore();
+  const tintRef = useRef<HTMLDivElement>(null);
+  const hudRef = useRef<HTMLDivElement>(null);
+  
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showGuideTooltip, setShowGuideTooltip] = useState(false);
@@ -20,6 +22,17 @@ export const RootLayout = () => {
     return () => console.log("RootLayout UNMOUNTED! (This should not happen during navigation)");
   }, []);
 
+  // Update DOM directly to bypass React state for high-fps animation
+  const updateDepthDOM = (depth: number) => {
+    if (tintRef.current) {
+      tintRef.current.style.background = `radial-gradient(circle at 50% 120%, rgba(5, 69, 84, ${0.4 + depth * 0.4}), rgba(3, 20, 43, ${0.7 + depth * 0.3}))`;
+      tintRef.current.style.backdropFilter = `blur(${depth * 4}px)`;
+    }
+    if (hudRef.current) {
+      hudRef.current.innerText = `${(depth * 4000).toFixed(0)}m`;
+    }
+  };
+
   // Scroll logic for Home with rAF throttle
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (!isHome) return;
@@ -28,10 +41,10 @@ export const RootLayout = () => {
     rAFRef.current = requestAnimationFrame(() => {
       const maxScroll = target.scrollHeight - target.clientHeight;
       if (maxScroll <= 0) {
-        setDepth(0);
+        updateDepthDOM(0);
       } else {
         const depth = target.scrollTop / maxScroll;
-        setDepth(depth);
+        updateDepthDOM(depth);
       }
       rAFRef.current = null;
     });
@@ -53,19 +66,20 @@ export const RootLayout = () => {
       const elapsed = time - startTime;
       // Gentle sine wave oscillation between 0.4 and 0.6 over 10 seconds
       const ambientDepth = 0.5 + Math.sin(elapsed / 2000) * 0.1;
-      setDepth(ambientDepth);
+      updateDepthDOM(ambientDepth);
       animationFrame = requestAnimationFrame(animate);
     };
     
     animationFrame = requestAnimationFrame(animate);
     
     return () => cancelAnimationFrame(animationFrame);
-  }, [isHome, setDepth]);
+  }, [isHome]);
 
   // CSS depth-tint overlay style based on depth01
+  const initialDepth = isHome ? 0 : 0.5;
   const depthTintStyle = {
-    background: `radial-gradient(circle at 50% 120%, rgba(5, 69, 84, ${0.4 + depth01 * 0.4}), rgba(3, 20, 43, ${0.7 + depth01 * 0.3}))`,
-    backdropFilter: `blur(${depth01 * 4}px)`,
+    background: `radial-gradient(circle at 50% 120%, rgba(5, 69, 84, ${0.4 + initialDepth * 0.4}), rgba(3, 20, 43, ${0.7 + initialDepth * 0.3}))`,
+    backdropFilter: `blur(${initialDepth * 4}px)`,
     transition: isHome ? 'none' : 'background 0.5s ease, backdrop-filter 0.5s ease',
   };
 
@@ -96,6 +110,7 @@ export const RootLayout = () => {
 
       {/* CSS Depth-Tint Overlay */}
       <div 
+        ref={tintRef}
         className="absolute inset-0 z-[2] pointer-events-none"
         style={depthTintStyle}
       />
@@ -103,7 +118,7 @@ export const RootLayout = () => {
       {/* Depth HUD */}
       <div className="absolute left-6 bottom-6 z-[20] pointer-events-none glass-panel px-4 py-2 rounded-lg border-l-2 border-l-cyan-bright shadow-lg">
         <div className="text-xs text-cyan-bright font-mono uppercase tracking-widest">Current Depth</div>
-        <div className="text-2xl text-foam-white font-mono">{(depth01 * 4000).toFixed(0)}m</div>
+        <div ref={hudRef} className="text-2xl text-foam-white font-mono">{(initialDepth * 4000).toFixed(0)}m</div>
       </div>
 
       {/* Guide Creature / Ecosystem */}
@@ -186,11 +201,13 @@ export const RootLayout = () => {
       <main 
         ref={scrollRef}
         onScroll={handleScroll}
-        className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden pt-24 pb-32 pointer-events-none"
+        className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden pt-24 pb-32"
       >
-        <div className="max-w-7xl mx-auto px-6 relative z-10 pointer-events-none">
-          <div className="pointer-events-auto min-h-screen">
-            <Outlet />
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
+          <div className="min-h-screen">
+            <Suspense fallback={<Skeleton />}>
+              <Outlet />
+            </Suspense>
           </div>
         </div>
       </main>
