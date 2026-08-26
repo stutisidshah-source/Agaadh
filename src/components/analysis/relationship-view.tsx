@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
+import { motion } from 'framer-motion';
 import type { ASVNode } from '@/lib/mockDataService';
 
 export const RelationshipView: React.FC<{ asv: ASVNode | null, onClose: () => void }> = ({ asv, onClose }) => {

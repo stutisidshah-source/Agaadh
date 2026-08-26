@@ -21,7 +21,6 @@ export const ClassificationFlow: React.FC = () => {
   
   // Basic static layout calculation for 3-column Sankey
   const nodeWidth = 24;
-  const colWidth = 400;
   
   // Hardcoded node positions for aesthetic alignment
   const nodePositions = [
@@ -36,7 +35,7 @@ export const ClassificationFlow: React.FC = () => {
     { x: 1250, y: 200, h: 60 } // 8: Database Storage
   ];
   
-  const generatePath = (sourcePos: any, targetPos: any, linkVal: number, totalSourceLinks: number, linkIndex: number) => {
+  const generatePath = (sourcePos: any, targetPos: any, _linkVal: number, totalSourceLinks: number, linkIndex: number) => {
     // simplified curve
     const startX = sourcePos.x + nodeWidth;
     const startY = sourcePos.y + (sourcePos.h / totalSourceLinks) * linkIndex + 10;

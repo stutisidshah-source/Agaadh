@@ -1,6 +1,4 @@
-import React from 'react';
-
-type StatusType = 'known' | 'uncertain' | 'novel' | 'artifact';
+export type StatusType = 'known' | 'uncertain' | 'novel' | 'artifact' | 'environmental';
 
 interface StatusChipProps {
   status: StatusType;
@@ -21,6 +19,9 @@ export const StatusChip = ({ status }: StatusChipProps) => {
       break;
     case 'artifact':
       colorClasses = 'bg-red-400/20 text-red-400 border-red-400/50';
+      break;
+    case 'environmental':
+      colorClasses = 'bg-emerald-400/20 text-emerald-400 border-emerald-400/50';
       break;
   }
 

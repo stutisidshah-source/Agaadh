@@ -19,8 +19,6 @@ export function WorldMap({
   const svgRef = useRef<SVGSVGElement>(null);
   const map = new DottedMap({ height: 100, grid: "diagonal" });
 
-  const isDark = true;
-
   const svgMap = map.getSVG({
     radius: 0.22,
     color: "#38BDF860", // Solid bright cyan-ish color for uniform look

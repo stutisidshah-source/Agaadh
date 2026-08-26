@@ -50,7 +50,7 @@ export const EnvironmentalAssociation: React.FC = () => {
 
         {/* Scatter Plot Area */}
         <div className="w-full h-full relative overflow-hidden bg-gradient-to-tr from-cyan-950/20 to-transparent">
-          {MOCK_ASVS.map((asv, i) => {
+          {MOCK_ASVS.map((asv) => {
             const xPercent = (asv.temperature / maxTemp) * 100;
             const yPercent = (asv.depth / maxDepth) * 100;
             const radius = Math.max(3, asv.confidence / 10);

@@ -1,4 +1,3 @@
-import React from 'react';
 import { GlassPanel } from './GlassPanel';
 
 interface KPICardProps {

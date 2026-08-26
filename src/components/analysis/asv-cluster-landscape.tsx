@@ -36,9 +36,6 @@ export const ASVClusterLandscape: React.FC = () => {
     setSelectedStatus(null);
   };
 
-  // Derive insights
-  const maxCluster = Object.entries(stats).reduce((max, [status, data]) => data.count > max.count ? { status, ...data } : max, { status: '', count: 0, totalConf: 0 });
-
   return (
     <GlassPanel className="p-0 overflow-hidden rounded-2xl flex flex-col h-[700px] border border-cyan-400/20 relative">
       <div className="absolute top-5 left-5 z-20 flex items-center gap-3">

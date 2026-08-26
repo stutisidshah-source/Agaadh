@@ -9,10 +9,11 @@ export default defineConfig({
     setupFiles: ['./src/setupTests.ts'],
     globals: true,
     exclude: ['node_modules', 'dist', 'e2e/**'],
+    pool: 'threads',
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
 });
