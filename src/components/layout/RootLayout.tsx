@@ -1,19 +1,16 @@
 import { useEffect, useRef, useState, Suspense } from 'react';
 import { Outlet, useLocation, NavLink } from 'react-router-dom';
 import { Skeleton } from '../ui/Skeleton';
-import { WaterRippleImage } from '../ui/water-ripple-image';
 
 export const RootLayout = () => {
-  const scrollRef = useRef<HTMLDivElement>(null);
   const tintRef = useRef<HTMLDivElement>(null);
   const hudRef = useRef<HTMLDivElement>(null);
   
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showGuideTooltip, setShowGuideTooltip] = useState(false);
-
+  
   const isHome = location.pathname === '/';
-
   const rAFRef = useRef<number | null>(null);
 
   // Mount check log (to verify canvas stays mounted)
@@ -33,22 +30,37 @@ export const RootLayout = () => {
     }
   };
 
-  // Scroll logic for Home with rAF throttle
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  // Scroll logic for Home with rAF throttle using native window scroll
+  useEffect(() => {
     if (!isHome) return;
-    const target = e.currentTarget as HTMLDivElement;
-    if (rAFRef.current) return;
-    rAFRef.current = requestAnimationFrame(() => {
-      const maxScroll = target.scrollHeight - target.clientHeight;
-      if (maxScroll <= 0) {
-        updateDepthDOM(0);
-      } else {
-        const depth = target.scrollTop / maxScroll;
-        updateDepthDOM(depth);
+    
+    const handleScroll = () => {
+      if (rAFRef.current) return;
+      rAFRef.current = requestAnimationFrame(() => {
+        // use document.documentElement for standard window scroll
+        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        if (maxScroll <= 0) {
+          updateDepthDOM(0);
+        } else {
+          const depth = window.scrollY / maxScroll;
+          updateDepthDOM(depth);
+        }
+        rAFRef.current = null;
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    // Run once on mount to set initial depth correctly
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rAFRef.current) {
+        cancelAnimationFrame(rAFRef.current);
+        rAFRef.current = null;
       }
-      rAFRef.current = null;
-    });
-  };
+    };
+  }, [isHome]);
 
   const prefetchRoute = (route: string) => {
     if (route === '/explorer') import('../../pages/Explorer');
@@ -94,35 +106,31 @@ export const RootLayout = () => {
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-deep-navy">
-      {/* Persistent Canvas Layer */}
-      <div className="absolute inset-0 z-[0] filter brightness-[0.75] saturate-[1.15] hue-rotate-[-5deg]">
-        <WaterRippleImage 
-          className="w-full h-full pointer-events-none brightness-[1.35]" 
-          blueish={0.5}
-          scale={6}
-          illumination={0.25}
-          surfaceDistortion={0.04}
-          waterDistortion={0.03}
+    <div className="relative min-h-screen bg-deep-navy">
+      {/* Persistent Background Layer */}
+      <div className="fixed inset-0 z-[0] filter brightness-[0.75] saturate-[1.15] hue-rotate-[-5deg]">
+        <img 
+          className="w-full h-full object-cover pointer-events-none brightness-[1.35]" 
           src="https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&q=80&w=1920"
+          alt="Ocean Background"
         />
       </div>
 
       {/* CSS Depth-Tint Overlay */}
       <div 
         ref={tintRef}
-        className="absolute inset-0 z-[2] pointer-events-none"
+        className="fixed inset-0 z-[2] pointer-events-none"
         style={depthTintStyle}
       />
 
       {/* Depth HUD */}
-      <div className="absolute left-6 bottom-6 z-[20] pointer-events-none glass-panel px-4 py-2 rounded-lg border-l-2 border-l-cyan-bright shadow-lg">
+      <div className="fixed left-6 bottom-6 z-[20] pointer-events-none glass-panel px-4 py-2 rounded-lg border-l-2 border-l-cyan-bright shadow-lg">
         <div className="text-xs text-cyan-bright font-mono uppercase tracking-widest">Current Depth</div>
         <div ref={hudRef} className="text-2xl text-foam-white font-mono">{(initialDepth * 4000).toFixed(0)}m</div>
       </div>
 
       {/* Guide Creature / Ecosystem */}
-      <div className="absolute right-6 bottom-6 z-[20] flex flex-col items-end gap-2">
+      <div className="fixed right-6 bottom-6 z-[20] flex flex-col items-end gap-2">
         <div 
           className="relative cursor-pointer group flex flex-col items-end outline-none focus-visible:ring-2 focus-visible:ring-cyan-bright focus-visible:ring-offset-2 focus-visible:ring-offset-deep-navy rounded-full"
           onClick={() => setShowGuideTooltip(!showGuideTooltip)}
@@ -156,7 +164,7 @@ export const RootLayout = () => {
       </div>
 
       {/* Hamburger & Drawer */}
-      <div className="absolute top-6 left-6 z-[30]">
+      <div className="fixed top-6 left-6 z-[30]">
         <button 
           onClick={() => setDrawerOpen(!drawerOpen)}
           className="p-3 glass-panel rounded-lg text-cyan-bright hover:text-foam-white transition-colors shadow-lg"
@@ -198,12 +206,8 @@ export const RootLayout = () => {
       </div>
 
       {/* Main Content Area */}
-      <main 
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden pt-24 pb-32"
-      >
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
+      <main className="relative z-10 pt-24 pb-32">
+        <div className="max-w-7xl mx-auto px-6">
           <div className="min-h-screen">
             <Suspense fallback={<Skeleton />}>
               <Outlet />
