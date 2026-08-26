@@ -2,10 +2,20 @@ import React from 'react';
 
 export const Skeleton = () => {
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-deep-navy/50 backdrop-blur-sm pointer-events-none animate-in fade-in">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-12 h-12 border-2 border-cyan-bright border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-cyan-bright font-mono text-sm tracking-widest uppercase animate-pulse">Initializing Sector...</p>
+    <div className="w-full flex flex-col gap-6 animate-in fade-in duration-500">
+      {/* Title Skeleton */}
+      <div className="w-64 h-12 bg-cyan-950/30 rounded-lg animate-pulse mb-2 border border-cyan-400/10" />
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch w-full">
+        {/* Left Panel Skeleton */}
+        <div className="lg:col-span-7 flex flex-col">
+          <div className="w-full bg-cyan-950/20 rounded-2xl animate-pulse border border-cyan-400/10 min-h-[520px]" />
+        </div>
+        
+        {/* Right Panel Skeleton */}
+        <div className="lg:col-span-5 flex flex-col">
+          <div className="w-full bg-cyan-950/20 rounded-2xl animate-pulse border border-cyan-400/10 min-h-[520px]" />
+        </div>
       </div>
     </div>
   );

@@ -1,101 +1,46 @@
-import { useEffect, useRef, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Outlet, useLocation, NavLink } from 'react-router-dom';
+import Lenis from 'lenis';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Skeleton } from '../ui/Skeleton';
+import { Ocean3DBackground } from './Ocean3DBackground';
 
 export const RootLayout = () => {
-  const tintRef = useRef<HTMLDivElement>(null);
-  const hudRef = useRef<HTMLDivElement>(null);
-  
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showGuideTooltip, setShowGuideTooltip] = useState(false);
-  
-  const isHome = location.pathname === '/';
-  const rAFRef = useRef<number | null>(null);
 
-  // Mount check log (to verify canvas stays mounted)
+  // Initialize Lenis buttery-smooth momentum scrolling
   useEffect(() => {
-    console.log("RootLayout mounted! persistent background should not unmount.");
-    return () => console.log("RootLayout UNMOUNTED! (This should not happen during navigation)");
-  }, []);
+    const lenis = new Lenis({
+      duration: 1.1,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      wheelMultiplier: 0.9,
+      touchMultiplier: 1.2,
+    });
 
-  // Update DOM directly to bypass React state for high-fps animation
-  const updateDepthDOM = (depth: number) => {
-    if (tintRef.current) {
-      tintRef.current.style.background = `radial-gradient(circle at 50% 120%, rgba(5, 69, 84, ${0.4 + depth * 0.4}), rgba(3, 20, 43, ${0.7 + depth * 0.3}))`;
-      tintRef.current.style.backdropFilter = `blur(${depth * 4}px)`;
+    let rafId: number;
+    function raf(time: number) {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
     }
-    if (hudRef.current) {
-      hudRef.current.innerText = `${(depth * 4000).toFixed(0)}m`;
-    }
-  };
-
-  // Scroll logic for Home with rAF throttle using native window scroll
-  useEffect(() => {
-    if (!isHome) return;
-    
-    const handleScroll = () => {
-      if (rAFRef.current) return;
-      rAFRef.current = requestAnimationFrame(() => {
-        // use document.documentElement for standard window scroll
-        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-        if (maxScroll <= 0) {
-          updateDepthDOM(0);
-        } else {
-          const depth = window.scrollY / maxScroll;
-          updateDepthDOM(depth);
-        }
-        rAFRef.current = null;
-      });
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    // Run once on mount to set initial depth correctly
-    handleScroll();
+    rafId = requestAnimationFrame(raf);
 
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (rAFRef.current) {
-        cancelAnimationFrame(rAFRef.current);
-        rAFRef.current = null;
-      }
+      cancelAnimationFrame(rafId);
+      lenis.destroy();
     };
-  }, [isHome]);
+  }, []);
 
   const prefetchRoute = (route: string) => {
     if (route === '/explorer') import('../../pages/Explorer');
     if (route === '/analysis') import('../../pages/Analysis');
   };
 
-  // Ambient oscillation for non-Home routes
-  useEffect(() => {
-    if (isHome) return;
-    
-    let animationFrame: number;
-    let startTime = performance.now();
-    
-    const animate = (time: number) => {
-      const elapsed = time - startTime;
-      // Gentle sine wave oscillation between 0.4 and 0.6 over 10 seconds
-      const ambientDepth = 0.5 + Math.sin(elapsed / 2000) * 0.1;
-      updateDepthDOM(ambientDepth);
-      animationFrame = requestAnimationFrame(animate);
-    };
-    
-    animationFrame = requestAnimationFrame(animate);
-    
-    return () => cancelAnimationFrame(animationFrame);
-  }, [isHome]);
-
-  // CSS depth-tint overlay style based on depth01
-  const initialDepth = isHome ? 0 : 0.5;
-  const depthTintStyle = {
-    background: `radial-gradient(circle at 50% 120%, rgba(5, 69, 84, ${0.4 + initialDepth * 0.4}), rgba(3, 20, 43, ${0.7 + initialDepth * 0.3}))`,
-    backdropFilter: `blur(${initialDepth * 4}px)`,
-    transition: isHome ? 'none' : 'background 0.5s ease, backdrop-filter 0.5s ease',
-  };
-
-  // Guide creature explanations based on route
+  // Guide explanations based on route
   const getGuideText = () => {
     switch(location.pathname) {
       case '/': return "Upload your eDNA sample sequences here for primary analysis.";
@@ -106,80 +51,58 @@ export const RootLayout = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-deep-navy">
-      {/* Persistent Background Layer */}
-      <div className="fixed inset-0 z-[0] filter brightness-[0.75] saturate-[1.15] hue-rotate-[-5deg]">
-        <img 
-          className="w-full h-full object-cover pointer-events-none brightness-[1.35]" 
-          src="https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&q=80&w=1920"
-          alt="Ocean Background"
-        />
-      </div>
+    <div className="relative min-h-screen bg-transparent">
+      {/* 3D HDRI Underwater Ocean Background */}
+      <Ocean3DBackground />
 
-      {/* CSS Depth-Tint Overlay */}
-      <div 
-        ref={tintRef}
-        className="fixed inset-0 z-[2] pointer-events-none"
-        style={depthTintStyle}
-      />
-
-      {/* Depth HUD */}
-      <div className="fixed left-6 bottom-6 z-[20] pointer-events-none glass-panel px-4 py-2 rounded-lg border-l-2 border-l-cyan-bright shadow-lg">
-        <div className="text-xs text-cyan-bright font-mono uppercase tracking-widest">Current Depth</div>
-        <div ref={hudRef} className="text-2xl text-foam-white font-mono">{(initialDepth * 4000).toFixed(0)}m</div>
-      </div>
-
-      {/* Guide Creature / Ecosystem */}
+      {/* Guide Fish Floating Action Button (Bottom Right) */}
       <div className="fixed right-6 bottom-6 z-[20] flex flex-col items-end gap-2">
-        <div 
-          className="relative cursor-pointer group flex flex-col items-end outline-none focus-visible:ring-2 focus-visible:ring-cyan-bright focus-visible:ring-offset-2 focus-visible:ring-offset-deep-navy rounded-full"
-          onClick={() => setShowGuideTooltip(!showGuideTooltip)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setShowGuideTooltip(!showGuideTooltip);
-            }
-          }}
-          tabIndex={0}
-          role="button"
-          aria-expanded={showGuideTooltip}
-          aria-label="Toggle Guide Creature"
-        >
-          {showGuideTooltip && (
-            <div className="mb-4 p-4 glass-panel rounded-xl max-w-[200px] text-sm text-foam-white animate-in fade-in slide-in-from-bottom-4 duration-300 shadow-lg border border-cyan-bright/30" aria-live="polite">
-              {getGuideText()}
+        {showGuideTooltip && (
+          <div 
+            className="mb-3 p-4 glass-panel rounded-2xl max-w-[240px] text-xs text-white animate-in fade-in slide-in-from-bottom-3 duration-300 shadow-2xl border border-cyan-400/30 select-none"
+            style={{ userSelect: 'none' }}
+            aria-live="polite"
+          >
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-cyan-300 uppercase mb-1 font-semibold">
+              <span>●</span> Subsystem Assistant
             </div>
-          )}
-          <div className="w-12 h-12 rounded-full bg-cyan-bright/20 border border-cyan-bright/50 flex items-center justify-center animate-pulse hover:bg-cyan-bright/40 transition-colors shadow-[0_0_15px_rgba(28,170,217,0.5)]">
-            <span className="text-xl" aria-hidden="true">🐟</span>
+            <p className="leading-relaxed text-white/90 font-light">{getGuideText()}</p>
           </div>
-        </div>
+        )}
+
         <button 
           onClick={() => setShowGuideTooltip(!showGuideTooltip)}
-          className="text-xs text-cyan-bright/60 hover:text-cyan-bright underline-offset-4 hover:underline focus-visible:underline"
-          aria-expanded={showGuideTooltip}
+          className="w-12 h-12 rounded-full glass-panel border border-cyan-400/40 flex items-center justify-center transition-all duration-300 shadow-[0_0_20px_rgba(77,238,233,0.35)] hover:shadow-[0_0_25px_rgba(77,238,233,0.6)] hover:scale-110 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 select-none"
+          title="Toggle Subsystem Assistant"
+          aria-label="Toggle Subsystem Assistant"
         >
-          What is this?
+          {/* Vector Fish Icon */}
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="pointer-events-none text-cyan-300">
+            <path d="M12 4C7.5 4 3.5 7.5 2 12C3.5 16.5 7.5 20 12 20C16.5 20 20.5 16.5 22 12C20.5 7.5 16.5 4 12 4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="rgba(103, 232, 249, 0.15)"/>
+            <path d="M12 8C10.5 9.5 9.5 11 9.5 12C9.5 13 10.5 14.5 12 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M17 12H17.01" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+            <path d="M2 12L0.5 9M2 12L0.5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
         </button>
       </div>
 
-      {/* Hamburger & Drawer */}
+      {/* Navigation Hamburger & Drawer */}
       <div className="fixed top-6 left-6 z-[30]">
         <button 
           onClick={() => setDrawerOpen(!drawerOpen)}
-          className="p-3 glass-panel rounded-lg text-cyan-bright hover:text-foam-white transition-colors shadow-lg"
+          className="p-3.5 glass-panel rounded-2xl text-white hover:text-cyan-200 transition-all shadow-2xl border border-white/25 hover:border-cyan-300/60"
           aria-label={drawerOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={drawerOpen}
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" /></svg>
         </button>
         
         {drawerOpen && (
-          <div className="absolute top-14 left-0 w-64 glass-panel rounded-xl p-4 flex flex-col gap-2 animate-in fade-in slide-in-from-left-4 duration-300 shadow-2xl border border-cyan-bright/20">
+          <div className="absolute top-16 left-0 w-72 glass-panel-glow rounded-3xl p-4 flex flex-col gap-2 animate-in fade-in slide-in-from-left-4 duration-300 shadow-2xl border border-white/30">
             <NavLink 
               to="/" 
               onClick={() => setDrawerOpen(false)}
-              className={({ isActive }) => `px-4 py-3 rounded-lg transition-colors font-display ${isActive ? 'bg-cyan-bright/20 text-cyan-bright border border-cyan-bright/30' : 'text-foam-white hover:bg-mid-teal/20'}`}
+              className={({ isActive }) => `px-5 py-3.5 rounded-2xl transition-all font-display font-medium text-base ${isActive ? 'bg-cyan-400/25 text-white border border-cyan-300 shadow-[0_0_15px_rgba(77,238,233,0.3)]' : 'text-white/80 hover:text-white hover:bg-white/15'}`}
             >
               Home
             </NavLink>
@@ -188,7 +111,7 @@ export const RootLayout = () => {
               onClick={() => setDrawerOpen(false)}
               onMouseEnter={() => prefetchRoute('/explorer')}
               onFocus={() => prefetchRoute('/explorer')}
-              className={({ isActive }) => `px-4 py-3 rounded-lg transition-colors font-display ${isActive ? 'bg-cyan-bright/20 text-cyan-bright border border-cyan-bright/30' : 'text-foam-white hover:bg-mid-teal/20'}`}
+              className={({ isActive }) => `px-5 py-3.5 rounded-2xl transition-all font-display font-medium text-base ${isActive ? 'bg-cyan-400/25 text-white border border-cyan-300 shadow-[0_0_15px_rgba(77,238,233,0.3)]' : 'text-white/80 hover:text-white hover:bg-white/15'}`}
             >
               Explorer
             </NavLink>
@@ -197,7 +120,7 @@ export const RootLayout = () => {
               onClick={() => setDrawerOpen(false)}
               onMouseEnter={() => prefetchRoute('/analysis')}
               onFocus={() => prefetchRoute('/analysis')}
-              className={({ isActive }) => `px-4 py-3 rounded-lg transition-colors font-display ${isActive ? 'bg-cyan-bright/20 text-cyan-bright border border-cyan-bright/30' : 'text-foam-white hover:bg-mid-teal/20'}`}
+              className={({ isActive }) => `px-5 py-3.5 rounded-2xl transition-all font-display font-medium text-base ${isActive ? 'bg-cyan-400/25 text-white border border-cyan-300 shadow-[0_0_15px_rgba(77,238,233,0.3)]' : 'text-white/80 hover:text-white hover:bg-white/15'}`}
             >
               Analysis
             </NavLink>
@@ -206,11 +129,24 @@ export const RootLayout = () => {
       </div>
 
       {/* Main Content Area */}
-      <main className="relative z-10 pt-24 pb-32">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="min-h-screen">
+      <main 
+        className="relative z-10 pt-12 pb-16 flex flex-col items-center justify-center min-h-[calc(100vh-2rem)]"
+        style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden', isolation: 'isolate' }}
+      >
+        <div className="max-w-6xl mx-auto px-6 w-full">
+          <div>
             <Suspense fallback={<Skeleton />}>
-              <Outlet />
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={location.pathname}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <Outlet />
+                </motion.div>
+              </AnimatePresence>
             </Suspense>
           </div>
         </div>
